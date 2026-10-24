@@ -50,7 +50,8 @@ class FakeSlide {
   selected: string[] = [];
   shapesApi = {
     addGeometricShape: (type: string, o: { left: number; top: number; width: number; height: number }) => this.push(new FakeShape(type, o.left, o.top, o.width, o.height)),
-    addLine: (_t: string, o: { left: number; top: number; width: number; height: number }) => this.push(new FakeShape("Line", o.left, o.top, o.width, o.height)),
+    // Jak prawdziwy PowerPoint: zerowy wymiar w opcjach zastępowany jest rozmiarem domyślnym.
+    addLine: (_t: string, o: { left: number; top: number; width: number; height: number }) => this.push(new FakeShape("Line", o.left, o.top, o.width || 100, o.height || 100)),
     addTextBox: (text: string, o: { left: number; top: number; width: number; height: number }) => {
       const s = this.push(new FakeShape("TextBox", o.left, o.top, o.width, o.height));
       s.textFrame.textRange.text = text;
@@ -195,5 +196,19 @@ describe("PowerPoint", () => {
     const lines = slide.live.filter((s) => s.type === "Line" && s.name === "series-line");
     expect(lines).toHaveLength(8);
     expect(lines.every((l) => l.rotation < 0)).toBe(true);
+  });
+
+  it("poziome i pionowe linie mają zerową wysokość lub szerokość (łączniki kaskadowe)", async () => {
+    const spec = newSpec("waterfall");
+    spec.options.cagr = { from: 0, to: 4 };
+    await insertChart(spec);
+    const connectors = slide.live.filter((s) => s.name === "connector");
+    expect(connectors).toHaveLength(4);
+    expect(connectors.every((c) => c.height === 0 && c.width > 0)).toBe(true);
+    const baseline = slide.live.find((s) => s.name === "baseline")!;
+    expect(baseline.height).toBe(0);
+    const arrows = slide.live.filter((s) => s.name === "arrow");
+    expect(arrows.filter((a) => a.width === 0)).toHaveLength(2);
+    expect(arrows.filter((a) => a.height === 0)).toHaveLength(1);
   });
 });

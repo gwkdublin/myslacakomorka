@@ -42,6 +42,20 @@ export function renderMode(prims: Prim[]): "shapes" | "image" {
   return advanced && !supports("1.10") ? "image" : "shapes";
 }
 
+/**
+ * Linia o zadanej ramce. PowerPoint traktuje zerową szerokość lub wysokość w opcjach `addLine`
+ * jak brak wartości i nadaje rozmiar domyślny (linia wtedy opada ukośnie), więc tworzymy ją
+ * z niezerową ramką i dopiero potem ustawiamy dokładne wymiary.
+ */
+function addStraightLine(shapes: PowerPoint.ShapeCollection, left: number, top: number, width: number, height: number): PowerPoint.Shape {
+  const s = shapes.addLine("Straight", { left, top, width: Math.max(width, 1), height: Math.max(height, 1) });
+  s.left = left;
+  s.top = top;
+  s.width = width;
+  s.height = height;
+  return s;
+}
+
 function noLine(shape: PowerPoint.Shape): void {
   shape.lineFormat.visible = false;
 }
@@ -90,10 +104,10 @@ function drawPrims(shapes: PowerPoint.ShapeCollection, prims: Prim[], ox: number
           const len = Math.hypot(dx, dy);
           const cx = ox + (p.x1 + p.x2) / 2;
           const cy = oy + (p.y1 + p.y2) / 2;
-          s = shapes.addLine("Straight", { left: cx - len / 2, top: cy, width: len, height: 0 });
+          s = addStraightLine(shapes, cx - len / 2, cy, len, 0);
           s.rotation = (Math.atan2(dy, dx) * 180) / Math.PI;
         } else {
-          s = shapes.addLine("Straight", { left: ox + Math.min(p.x1, p.x2), top: oy + Math.min(p.y1, p.y2), width: Math.abs(dx), height: Math.abs(dy) });
+          s = addStraightLine(shapes, ox + Math.min(p.x1, p.x2), oy + Math.min(p.y1, p.y2), Math.abs(dx), Math.abs(dy));
         }
         s.lineFormat.color = p.color;
         s.lineFormat.weight = p.width;
