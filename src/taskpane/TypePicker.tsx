@@ -1,7 +1,7 @@
 import { CHART_TYPE_LABELS } from "../core/layout";
 import type { ChartType } from "../core/types";
 
-const TYPES: ChartType[] = ["column-clustered", "column-stacked", "column-100", "bar-clustered", "bar-stacked", "line", "pie", "doughnut", "waterfall"];
+const TYPES: ChartType[] = ["column-clustered", "column-stacked", "column-100", "bar-clustered", "bar-stacked", "line", "pie", "doughnut", "waterfall", "scatter"];
 
 function Icon({ type }: { type: ChartType }) {
   const c1 = "var(--accent)";
@@ -81,6 +81,16 @@ function Icon({ type }: { type: ChartType }) {
           <rect x="7" y="4" width="4" height="4" fill={c2} />
           <rect x="12" y="4" width="4" height="5" fill={c3} />
           <rect x="17" y="9" width="4" height="12" fill={c1} />
+        </>
+      );
+    case "scatter":
+      return (
+        <>
+          <path d="M3 3 V21 H21" fill="none" stroke="var(--muted)" strokeWidth="1" />
+          <circle cx="8" cy="15" r="2" fill={c1} />
+          <circle cx="13" cy="9" r="3.5" fill={c2} />
+          <rect x="16" y="14" width="3.5" height="3.5" fill="none" stroke={c1} strokeWidth="1.3" />
+          <polygon points="18,3.5 20.5,7.5 15.5,7.5" fill={c3} />
         </>
       );
   }

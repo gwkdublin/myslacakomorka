@@ -15,7 +15,7 @@ class FakeShape {
   fillColor: string | null = null;
   adjust: number[] = [];
   tagMap = new Map<string, string>();
-  fill = { setSolidColor: (c: string) => (this.fillColor = c) };
+  fill = { setSolidColor: (c: string) => (this.fillColor = c), clear: () => (this.fillColor = null) };
   lineFormat: Record<string, unknown> = {};
   textFrame = { textRange: { text: "", font: {} as Record<string, unknown>, paragraphFormat: {} as Record<string, unknown> } } as Record<string, unknown> & {
     textRange: { text: string; font: Record<string, unknown>; paragraphFormat: Record<string, unknown> };
@@ -210,5 +210,18 @@ describe("PowerPoint", () => {
     const arrows = slide.live.filter((s) => s.name === "arrow");
     expect(arrows.filter((a) => a.width === 0)).toHaveLength(2);
     expect(arrows.filter((a) => a.height === 0)).toHaveLength(1);
+  });
+
+  it("wykres punktowy: kształty i kropki puste", async () => {
+    const spec = newSpec("scatter");
+    spec.options.scatter.groupStyles = [{ shape: "hexagon", filled: false }, { shape: "diamond", filled: true }, { shape: "cross", filled: true }];
+    await insertChart(spec);
+    const pts = slide.live.filter((s) => s.name === "point");
+    expect(pts).toHaveLength(7);
+    const hex = pts.filter((p) => p.type === "Hexagon");
+    expect(hex).toHaveLength(3);
+    expect(hex.every((h) => h.fillColor === null && h.lineFormat.weight === 1.5)).toBe(true);
+    expect(pts.filter((p) => p.type === "Diamond" && p.fillColor)).toHaveLength(2);
+    expect(pts.filter((p) => p.type === "MathMultiply")).toHaveLength(2);
   });
 });

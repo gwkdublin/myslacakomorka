@@ -2,7 +2,8 @@
 import { layoutChart } from "../core/layout";
 import { normalizeSpec } from "../core/data";
 import { primsToSvg } from "../core/svg";
-import type { ChartSpec, Prim, Size } from "../core/types";
+import { markerBox } from "../core/markers";
+import type { ChartSpec, MarkerShape, Prim, Size } from "../core/types";
 import { CHART_TYPE_LABELS } from "../core/layout";
 
 const TAG_MARK = "MKCHART";
@@ -55,6 +56,15 @@ function addStraightLine(shapes: PowerPoint.ShapeCollection, left: number, top: 
   s.height = height;
   return s;
 }
+
+const MARKER_GEOMETRY: Record<MarkerShape, "Ellipse" | "Rectangle" | "Triangle" | "Diamond" | "Hexagon" | "MathMultiply"> = {
+  circle: "Ellipse",
+  square: "Rectangle",
+  triangle: "Triangle",
+  diamond: "Diamond",
+  hexagon: "Hexagon",
+  cross: "MathMultiply",
+};
 
 function noLine(shape: PowerPoint.Shape): void {
   shape.lineFormat.visible = false;
@@ -117,10 +127,18 @@ function drawPrims(shapes: PowerPoint.ShapeCollection, prims: Prim[], ox: number
         break;
       }
       case "marker": {
-        const s = shapes.addGeometricShape("Ellipse", { left: ox + p.cx - p.r, top: oy + p.cy - p.r, width: p.r * 2, height: p.r * 2 });
-        s.fill.setSolidColor(p.fill);
-        s.lineFormat.color = "#FFFFFF";
-        s.lineFormat.weight = 1;
+        const shape = p.shape ?? "circle";
+        const box = markerBox(shape, p.r);
+        const s = shapes.addGeometricShape(MARKER_GEOMETRY[shape], { left: ox + p.cx - box.w / 2, top: oy + p.cy - box.h / 2, width: box.w, height: box.h });
+        if (p.hollow) {
+          s.fill.clear();
+          s.lineFormat.color = p.fill;
+          s.lineFormat.weight = 1.5;
+        } else {
+          s.fill.setSolidColor(p.fill);
+          s.lineFormat.color = "#FFFFFF";
+          s.lineFormat.weight = 0.75;
+        }
         s.name = p.role;
         created.push(s);
         break;

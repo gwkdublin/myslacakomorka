@@ -9,7 +9,8 @@ export type ChartType =
   | "line"
   | "pie"
   | "doughnut"
-  | "waterfall";
+  | "waterfall"
+  | "scatter";
 
 export interface NumberFormat {
   decimals: number;
@@ -41,6 +42,25 @@ export interface ExcelLink {
   linkedAt: string;
 }
 
+export type MarkerShape = "circle" | "square" | "triangle" | "diamond" | "hexagon" | "cross";
+
+export interface MarkerStyle {
+  shape: MarkerShape;
+  /** true = kształt pełny (solid), false = tylko obrys (hollow). */
+  filled: boolean;
+}
+
+export interface ScatterOptions {
+  /** Wielkość kropek proporcjonalna do kolumny „Wielkość” (wykres bąbelkowy). */
+  sizeByValue: boolean;
+  /** Promień kropki bez skalowania (pt). */
+  markerSize: number;
+  /** Promień największego bąbla (pt). */
+  maxBubbleSize: number;
+  /** Styl kropek dla kolejnych grup (wg kolejności pojawienia się w danych). */
+  groupStyles: MarkerStyle[];
+}
+
 export interface ChartOptions {
   paletteId: string;
   /** Kolory własnej palety (hex), zapisywane razem z wykresem. */
@@ -56,6 +76,7 @@ export interface ChartOptions {
   format: NumberFormat;
   diffArrow: DiffArrowSpec | null;
   cagr: ArrowSpec | null;
+  scatter: ScatterOptions;
 }
 
 export interface ChartSpec {
@@ -65,6 +86,8 @@ export interface ChartSpec {
    * Arkusz danych jak w think-cell: wiersz 0 to nazwy kategorii (od kolumny 1),
    * kolumna 0 to nazwy serii (od wiersza 1), reszta to wartości jako tekst.
    * W wykresie kaskadowym wartość "e" oznacza sumę (obliczaną automatycznie).
+   * Wykres punktowy ma inny układ: wiersz 0 to nagłówki, a każdy kolejny wiersz to punkt
+   * (etykieta, X, Y, wielkość, grupa).
    */
   grid: string[][];
   options: ChartOptions;
@@ -154,6 +177,9 @@ export interface MarkerPrim {
   cy: number;
   r: number;
   fill: string;
+  shape?: MarkerShape;
+  /** Pusty środek: kolor `fill` służy wtedy jako kolor obrysu. */
+  hollow?: boolean;
 }
 
 export type Prim = RectPrim | LinePrim | TextPrim | WedgePrim | TrianglePrim | MarkerPrim;

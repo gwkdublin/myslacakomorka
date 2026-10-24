@@ -1,6 +1,6 @@
 {
   "name": "wykresy-powerpoint",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "description": "Dodatek do PowerPointa do szybkiego tworzenia zaawansowanych wykresów (inspirowany think-cell).",
   "type": "module",

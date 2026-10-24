@@ -1,6 +1,7 @@
 import { colorAt, contrastText, getPaletteColors, getWaterfallColors } from "./palettes";
-import { formatNumber, formatSigned, gridToData } from "./data";
-import type { ChartData, ChartSpec, LinePrim, Prim, Size, TextPrim } from "./types";
+import { formatNumber, formatSigned, gridToData, gridToScatter } from "./data";
+import { markerStyleFor } from "./markers";
+import type { ChartData, ChartSpec, LinePrim, MarkerStyle, Prim, Size, TextPrim } from "./types";
 
 const TEXT = "#262626";
 const AXIS = "#7F7F7F";
@@ -75,14 +76,23 @@ function line(ctx: Ctx, role: string, x1: number, y1: number, x2: number, y2: nu
 }
 
 /** Legenda w poziomie u góry wykresu. Zwraca zajętą wysokość. */
-function legend(ctx: Ctx, items: { label: string; color: string }[], width: number): number {
+interface LegendItem {
+  label: string;
+  color: string;
+  /** Kropka zamiast prostokąta (wykres punktowy). */
+  marker?: MarkerStyle;
+  /** Sam tekst bez znacznika. */
+  textOnly?: boolean;
+}
+
+function legend(ctx: Ctx, items: LegendItem[], width: number): number {
   if (!ctx.spec.options.showLegend || items.length === 0) return 0;
   const sw = ctx.fs * 0.8;
   let x = 0;
   let row = 0;
-  const placed: { label: string; color: string; x: number; row: number; w: number }[] = [];
+  const placed: (LegendItem & { x: number; row: number; w: number })[] = [];
   for (const item of items) {
-    const w = sw + 4 + textWidth(item.label, ctx.fs) + 4;
+    const w = (item.textOnly ? 0 : sw + 4) + textWidth(item.label, ctx.fs) + 4;
     if (x > 0 && x + w > width) {
       x = 0;
       row++;
@@ -92,7 +102,15 @@ function legend(ctx: Ctx, items: { label: string; color: string }[], width: numb
   }
   for (const p of placed) {
     const y = p.row * ctx.lh;
-    ctx.out.push({ kind: "rect", role: "legend-swatch", x: p.x, y: y + (ctx.lh - sw) / 2, w: sw, h: sw, fill: p.color });
+    if (p.textOnly) {
+      text(ctx, "legend-label", p.x, y, p.w, ctx.lh, p.label, { align: "left", color: AXIS });
+      continue;
+    }
+    if (p.marker) {
+      ctx.out.push({ kind: "marker", role: "legend-swatch", cx: p.x + sw / 2, cy: y + ctx.lh / 2, r: sw / 2, fill: p.color, shape: p.marker.shape, hollow: !p.marker.filled });
+    } else {
+      ctx.out.push({ kind: "rect", role: "legend-swatch", x: p.x, y: y + (ctx.lh - sw) / 2, w: sw, h: sw, fill: p.color });
+    }
     text(ctx, "legend-label", p.x + sw + 4, y, p.w - sw - 4, ctx.lh, p.label, { align: "left" });
   }
   return (row + 1) * ctx.lh + PAD;
@@ -106,6 +124,10 @@ export function layoutChart(spec: ChartSpec, size: Size): Prim[] {
   const data = gridToData(spec.grid);
   const fs = spec.options.fontSize;
   const ctx: Ctx = { spec, data, colors: getPaletteColors(spec.options.paletteId, spec.options.customColors), fs, lh: lineHeight(fs), out: [] };
+  if (spec.type === "scatter") {
+    layoutScatter(ctx, size);
+    return ctx.out;
+  }
   if (data.categories.length === 0 || data.series.length === 0) {
     text(ctx, "empty", 0, 0, size.width, size.height, "Brak danych – uzupełnij arkusz danych", { color: AXIS });
     return ctx.out;
@@ -532,6 +554,87 @@ function layoutWaterfall(ctx: Ctx, size: Size): void {
   decorations(ctx, p, (c) => p.y(Math.max(bars[c].from, bars[c].to)), (c) => bars[c].to);
 }
 
+/** Zakres osi wyrównany do „ładnego” kroku, z marginesem dla pojedynczej wartości. */
+function niceAxis(min: number, max: number): { min: number; max: number; step: number } {
+  if (min === max) {
+    const d = Math.abs(min) * 0.1 || 1;
+    min -= d;
+    max += d;
+  }
+  const step = niceStep(max - min);
+  return { min: Math.floor(min / step - 1e-9) * step, max: Math.ceil(max / step - 1e-9) * step, step };
+}
+
+function layoutScatter(ctx: Ctx, size: Size): void {
+  const { options } = ctx.spec;
+  const sc = options.scatter;
+  const sd = gridToScatter(ctx.spec.grid);
+  if (sd.points.length === 0) {
+    text(ctx, "empty", 0, 0, size.width, size.height, "Brak danych – wpisz punkty: etykieta, X, Y, wielkość, grupa", { color: AXIS });
+    return;
+  }
+  const sizes = sd.points.map((p) => p.size ?? 0).filter((v) => v > 0);
+  const smax = Math.max(0, ...sizes);
+  const bySize = sc.sizeByValue && smax > 0;
+  const radius = (s: number | null) => (bySize ? Math.max(2, sc.maxBubbleSize * Math.sqrt(Math.max(0, s ?? 0) / smax)) : sc.markerSize);
+  const maxR = Math.max(...sd.points.map((p) => radius(p.size)));
+
+  const items: LegendItem[] = [];
+  if (sd.groups.length > 1)
+    sd.groups.forEach((g, i) => items.push({ label: g || "(bez grupy)", color: colorAt(ctx.colors, i), marker: markerStyleFor(sc, i) }));
+  if (bySize && sd.headers.size.trim()) items.push({ label: `Wielkość: ${sd.headers.size.trim()}`, color: "", textOnly: true });
+  const legendH = legend(ctx, items, size.width);
+
+  const xa = niceAxis(Math.min(...sd.points.map((p) => p.x)), Math.max(...sd.points.map((p) => p.x)));
+  const ya = niceAxis(Math.min(...sd.points.map((p) => p.y)), Math.max(...sd.points.map((p) => p.y)));
+  const fmt = options.format;
+  const yLabels: { v: number; t: string }[] = [];
+  for (let v = ya.min; v <= ya.max + ya.step * 1e-6; v += ya.step) yLabels.push({ v, t: formatNumber(v, fmt) });
+  const axisW = Math.max(...yLabels.map((l) => textWidth(l.t, ctx.fs))) + 6;
+
+  const hasYTitle = sd.headers.y.trim() !== "";
+  const hasXTitle = sd.headers.x.trim() !== "";
+  const left = axisW + PAD;
+  const right = size.width - PAD - ctx.fs;
+  const top = legendH + (hasYTitle ? ctx.lh : 0) + PAD + ctx.lh / 2;
+  const bottom = size.height - PAD - ctx.lh - (hasXTitle ? ctx.lh : 0);
+  // Kropki nie mogą wychodzić poza osie, więc obszar danych jest wcięty o promień największej z nich.
+  const x = (v: number) => left + maxR + ((v - xa.min) / (xa.max - xa.min)) * (right - left - 2 * maxR);
+  const y = (v: number) => bottom - maxR - ((v - ya.min) / (ya.max - ya.min)) * (bottom - top - 2 * maxR);
+
+  for (const l of yLabels) {
+    const yy = y(l.v);
+    if (options.showValueAxis) line(ctx, "gridline", left, yy, right, yy, { color: GRID, width: 0.5, dash: true });
+    text(ctx, "axis-label", 0, yy - ctx.lh / 2, axisW - 2, ctx.lh, l.t, { align: "right", color: AXIS });
+  }
+  for (let v = xa.min; v <= xa.max + xa.step * 1e-6; v += xa.step) {
+    const xx = x(v);
+    if (options.showValueAxis) line(ctx, "gridline", xx, top, xx, bottom, { color: GRID, width: 0.5, dash: true });
+    const t = formatNumber(v, fmt);
+    const w = textWidth(t, ctx.fs) + 8;
+    text(ctx, "axis-label", xx - w / 2, bottom + 2, w, ctx.lh, t, { color: AXIS });
+  }
+  line(ctx, "value-axis", left, top, left, bottom);
+  line(ctx, "value-axis", left, bottom, right, bottom);
+  if (hasYTitle) text(ctx, "axis-title", 0, legendH, size.width / 2, ctx.lh, sd.headers.y.trim(), { align: "left", bold: true });
+  if (hasXTitle) text(ctx, "axis-title", left, size.height - PAD - ctx.lh, right - left, ctx.lh, sd.headers.x.trim(), { bold: true });
+
+  // Większe kropki najpierw, żeby mniejsze nie zostały przez nie zasłonięte.
+  const order = [...sd.points].sort((a, b) => radius(b.size) - radius(a.size));
+  for (const p of order) {
+    const st = markerStyleFor(sc, p.group);
+    ctx.out.push({ kind: "marker", role: "point", cx: x(p.x), cy: y(p.y), r: radius(p.size), fill: colorAt(ctx.colors, p.group), shape: st.shape, hollow: !st.filled });
+  }
+  if (options.showValueLabels)
+    for (const p of sd.points) {
+      if (!p.label) continue;
+      const r = radius(p.size);
+      const w = textWidth(p.label, ctx.fs) + 4;
+      const lx = x(p.x) + r + 3 + w > size.width ? x(p.x) - r - 3 - w : x(p.x) + r + 3;
+      text(ctx, "point-label", lx, y(p.y) - ctx.lh / 2, w, ctx.lh, p.label, { align: lx < x(p.x) ? "right" : "left" });
+    }
+}
+
 export const CHART_TYPE_LABELS: Record<ChartSpec["type"], string> = {
   "column-clustered": "Kolumnowy grupowany",
   "column-stacked": "Kolumnowy skumulowany",
@@ -542,4 +645,5 @@ export const CHART_TYPE_LABELS: Record<ChartSpec["type"], string> = {
   pie: "Kołowy",
   doughnut: "Pierścieniowy",
   waterfall: "Kaskadowy",
+  scatter: "Punktowy / bąbelkowy",
 };

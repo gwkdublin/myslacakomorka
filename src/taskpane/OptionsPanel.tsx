@@ -1,10 +1,85 @@
-import type { ChartOptions, ChartType } from "../core/types";
+import { MARKER_SHAPES, markerStyleFor } from "../core/markers";
+import { colorAt } from "../core/palettes";
+import { primsToSvg } from "../core/svg";
+import type { ChartOptions, ChartType, MarkerStyle } from "../core/types";
 
 interface Props {
   type: ChartType;
   options: ChartOptions;
   categories: string[];
+  /** Grupy punktów (tylko wykres punktowy). */
+  groups: string[];
+  colors: string[];
   onChange: (options: ChartOptions) => void;
+}
+
+function MarkerIcon({ style, color }: { style: MarkerStyle; color: string }) {
+  const svg = primsToSvg([{ kind: "marker", role: "icon", cx: 9, cy: 9, r: 6, fill: color, shape: style.shape, hollow: !style.filled }], { width: 18, height: 18 });
+  return <span className="marker-icon" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
+}
+
+function ScatterOptions({ options, groups, colors, onChange }: { options: ChartOptions; groups: string[]; colors: string[]; onChange: (o: ChartOptions) => void }) {
+  const sc = options.scatter;
+  const setSc = (patch: Partial<ChartOptions["scatter"]>) => onChange({ ...options, scatter: { ...sc, ...patch } });
+  const setStyle = (gi: number, patch: Partial<MarkerStyle>) => {
+    const styles = [...sc.groupStyles];
+    for (let i = 0; i <= gi; i++) styles[i] = styles[i] ?? markerStyleFor(sc, i);
+    styles[gi] = { ...styles[gi], ...patch };
+    setSc({ groupStyles: styles });
+  };
+  const rows = groups.length > 0 ? groups : [""];
+  return (
+    <fieldset>
+      <legend>Kropki</legend>
+      <label className="check">
+        <input type="checkbox" checked={sc.sizeByValue} onChange={(e) => setSc({ sizeByValue: e.target.checked })} />
+        Wielkość kropek wg kolumny „Wielkość” (bąbelki)
+      </label>
+      {sc.sizeByValue ? (
+        <label className="slider">
+          Największy bąbel: {sc.maxBubbleSize} pt
+          <input type="range" min={8} max={50} step={1} value={sc.maxBubbleSize} onChange={(e) => setSc({ maxBubbleSize: Number(e.target.value) })} />
+        </label>
+      ) : (
+        <label className="slider">
+          Wielkość kropki: {sc.markerSize} pt
+          <input type="range" min={2} max={16} step={0.5} value={sc.markerSize} onChange={(e) => setSc({ markerSize: Number(e.target.value) })} />
+        </label>
+      )}
+      {rows.map((g, gi) => {
+        const st = markerStyleFor(sc, gi);
+        const color = colorAt(colors, gi);
+        return (
+          <div key={gi} className="marker-row">
+            <div className="marker-group">{groups.length > 1 ? g || "(bez grupy)" : "Wszystkie punkty"}</div>
+            <div className="marker-shapes" role="radiogroup" aria-label={`Kształt kropek: ${g || "wszystkie"}`}>
+              {MARKER_SHAPES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={st.shape === m.id}
+                  className={"marker-btn" + (st.shape === m.id ? " active" : "")}
+                  title={m.name}
+                  onClick={() => setStyle(gi, { shape: m.id })}
+                >
+                  <MarkerIcon style={{ shape: m.id, filled: st.filled }} color={color} />
+                </button>
+              ))}
+              <span className="seg">
+                <button type="button" className={st.filled ? "active" : ""} onClick={() => setStyle(gi, { filled: true })} title="Pełne (solid)">
+                  Pełne
+                </button>
+                <button type="button" className={!st.filled ? "active" : ""} onClick={() => setStyle(gi, { filled: false })} title="Puste (hollow)">
+                  Puste
+                </button>
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </fieldset>
+  );
 }
 
 function CategorySelect({ value, categories, onChange, label }: { value: number; categories: string[]; onChange: (v: number) => void; label: string }) {
@@ -19,18 +94,19 @@ function CategorySelect({ value, categories, onChange, label }: { value: number;
   );
 }
 
-export function OptionsPanel({ type, options, categories, onChange }: Props) {
+export function OptionsPanel({ type, options, categories, groups, colors, onChange }: Props) {
   const set = <K extends keyof ChartOptions>(key: K, value: ChartOptions[K]) => onChange({ ...options, [key]: value });
   const setFormat = (patch: Partial<ChartOptions["format"]>) => onChange({ ...options, format: { ...options.format, ...patch } });
   const last = Math.max(0, categories.length - 1);
-  const arrowsAllowed = type !== "pie" && type !== "doughnut" && !type.startsWith("bar") && categories.length >= 2;
+  const scatter = type === "scatter";
+  const arrowsAllowed = !scatter && type !== "pie" && type !== "doughnut" && !type.startsWith("bar") && categories.length >= 2;
   const totalsAllowed = type === "column-stacked" || type === "column-100" || type === "bar-stacked" || type === "doughnut";
 
   return (
     <div className="options">
       <label className="check">
         <input type="checkbox" checked={options.showValueLabels} onChange={(e) => set("showValueLabels", e.target.checked)} />
-        Etykiety wartości
+        {scatter ? "Etykiety punktów" : "Etykiety wartości"}
       </label>
       {totalsAllowed && (
         <label className="check">
@@ -45,7 +121,7 @@ export function OptionsPanel({ type, options, categories, onChange }: Props) {
       {type !== "pie" && type !== "doughnut" && !type.startsWith("bar") && (
         <label className="check">
           <input type="checkbox" checked={options.showValueAxis} onChange={(e) => set("showValueAxis", e.target.checked)} />
-          Oś wartości z liniami siatki
+          {scatter ? "Linie siatki" : "Oś wartości z liniami siatki"}
         </label>
       )}
 
@@ -78,7 +154,8 @@ export function OptionsPanel({ type, options, categories, onChange }: Props) {
           <input type="number" min={7} max={28} value={options.fontSize} onChange={(e) => set("fontSize", Math.max(7, Math.min(28, Number(e.target.value) || 12)))} />
         </label>
       </div>
-      {type !== "pie" && type !== "doughnut" && type !== "line" && (
+      {scatter && <ScatterOptions options={options} groups={groups} colors={colors} onChange={onChange} />}
+      {type !== "pie" && type !== "doughnut" && type !== "line" && !scatter && (
         <label className="slider">
           Odstęp między kolumnami: {Math.round(options.gap * 100)}%
           <input type="range" min={0} max={0.8} step={0.05} value={options.gap} onChange={(e) => set("gap", Number(e.target.value))} />

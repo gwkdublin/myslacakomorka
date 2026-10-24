@@ -1,10 +1,10 @@
 import { newSpec } from "../src/core/data";
 import { cagr, layoutChart, niceStep, wrapText } from "../src/core/layout";
 import { primsToSvg } from "../src/core/svg";
-import type { ChartType, Prim, TextPrim } from "../src/core/types";
+import type { ChartType, MarkerPrim, Prim, TextPrim } from "../src/core/types";
 
 const size = { width: 480, height: 300 };
-const types: ChartType[] = ["column-clustered", "column-stacked", "column-100", "bar-clustered", "bar-stacked", "line", "pie", "doughnut", "waterfall"];
+const types: ChartType[] = ["column-clustered", "column-stacked", "column-100", "bar-clustered", "bar-stacked", "line", "pie", "doughnut", "waterfall", "scatter"];
 
 const texts = (prims: Prim[], role: string) => prims.filter((p): p is TextPrim => p.kind === "text" && p.role === role).map((p) => p.text);
 
@@ -85,4 +85,57 @@ it("cagr", () => {
 it("wrapText łamie i skraca", () => {
   expect(wrapText("Przychody ze sprzedaży krajowej", 60, 12).length).toBeGreaterThan(1);
   expect(wrapText("a b c d e f g h", 5, 12, 2)).toHaveLength(2);
+});
+
+describe("wykres punktowy", () => {
+  const points = (prims: Prim[]) => prims.filter((p): p is MarkerPrim => p.kind === "marker" && p.role === "point");
+
+  it("wielkość bąbli rośnie z pierwiastkiem wartości", () => {
+    const spec = newSpec("scatter");
+    spec.grid = [["", "X", "Y", "W", ""], ["a", "1", "1", "100", ""], ["b", "2", "2", "25", ""]];
+    const pts = points(layoutChart(spec, size));
+    const big = pts.find((p) => p.r === spec.options.scatter.maxBubbleSize)!;
+    const small = pts.find((p) => p !== big)!;
+    expect(small.r).toBeCloseTo(spec.options.scatter.maxBubbleSize / 2);
+    // Większy rysowany jako pierwszy, żeby nie zasłaniał mniejszego.
+    expect(pts[0]).toBe(big);
+  });
+
+  it("bez skalowania wszystkie kropki mają tę samą wielkość", () => {
+    const spec = newSpec("scatter");
+    spec.options.scatter.sizeByValue = false;
+    const pts = points(layoutChart(spec, size));
+    expect(new Set(pts.map((p) => p.r))).toEqual(new Set([spec.options.scatter.markerSize]));
+  });
+
+  it("styl kropek zależy od grupy", () => {
+    const spec = newSpec("scatter");
+    spec.options.scatter.groupStyles = [{ shape: "triangle", filled: false }, { shape: "cross", filled: true }];
+    const prims = layoutChart(spec, size);
+    const pts = points(prims);
+    expect(pts.filter((p) => p.shape === "triangle" && p.hollow)).toHaveLength(3);
+    expect(pts.filter((p) => p.shape === "cross" && !p.hollow)).toHaveLength(2);
+    expect(pts.filter((p) => p.shape === "circle")).toHaveLength(2);
+    expect(texts(prims, "legend-label")).toEqual(["Premium", "Masowy", "Nisza", "Wielkość: Przychody"]);
+    expect(texts(prims, "axis-title")).toEqual(["Wzrost r/r", "Udział w rynku"]);
+    const svg = primsToSvg(prims, size);
+    expect(svg).toContain('fill="none"');
+    expect(svg).toContain("<polygon");
+  });
+
+  it("kropki mieszczą się między osiami", () => {
+    const prims = layoutChart(newSpec("scatter"), size);
+    const axes = prims.filter((p) => p.kind === "line" && p.role === "value-axis");
+    const left = Math.min(...axes.map((a) => (a.kind === "line" ? a.x1 : 0)));
+    for (const p of points(prims)) {
+      expect(p.cx - p.r).toBeGreaterThanOrEqual(left - 0.01);
+      expect(p.cx + p.r).toBeLessThanOrEqual(size.width);
+    }
+  });
+
+  it("pusty arkusz punktów daje komunikat", () => {
+    const spec = newSpec("scatter");
+    spec.grid = [["Etykieta", "X", "Y"], ["a", "", "1"]];
+    expect(texts(layoutChart(spec, size), "empty")).toHaveLength(1);
+  });
 });

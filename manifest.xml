@@ -5,7 +5,7 @@
            xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
            xsi:type="TaskPaneApp">
   <Id>40bc4e7a-b99a-46b3-bc29-459bad5e9fa2</Id>
-  <Version>0.1.0.0</Version>
+  <Version>0.2.0.0</Version>
   <ProviderName>MyslacaKomorka</ProviderName>
   <DefaultLocale>pl-PL</DefaultLocale>
   <DisplayName DefaultValue="Wykresy"/>

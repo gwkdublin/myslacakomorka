@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { gridToData, newSpec, sampleGrid } from "../core/data";
+import { gridToData, gridToScatter, newSpec, sampleGrid } from "../core/data";
 import { CHART_TYPE_LABELS, layoutChart } from "../core/layout";
 import { primsToSvg } from "../core/svg";
+import { getPaletteColors } from "../core/palettes";
 import type { ChartSpec, ChartType } from "../core/types";
 import { getSelectedChart, inPowerPoint, insertChart, updateChart } from "../office/powerpoint";
 import { DataSheet } from "./DataSheet";
@@ -105,18 +106,21 @@ export function App() {
   }, [spec, selectedId, autoUpdate, office, onUpdate]);
 
   const categories = useMemo(() => gridToData(spec.grid).categories, [spec.grid]);
+  const scatterGroups = useMemo(() => (spec.type === "scatter" ? gridToScatter(spec.grid).groups : []), [spec.type, spec.grid]);
   const svg = useMemo(() => primsToSvg(layoutChart(spec, PREVIEW), PREVIEW), [spec]);
 
   const setType = (type: ChartType) => {
     const next = { ...spec, type };
     // Przy zmianie typu z/na kaskadowy podmień przykładowe dane, jeśli użytkownik ich nie zmieniał.
-    const isSample = (["column-stacked", "waterfall", "pie", "line"] as ChartType[]).some((t) => JSON.stringify(sampleGrid(t)) === JSON.stringify(spec.grid));
-    if (isSample && JSON.stringify(sampleGrid(type)) !== JSON.stringify(spec.grid)) {
+    const isSample = (["column-stacked", "waterfall", "pie", "line", "scatter"] as ChartType[]).some((t) => JSON.stringify(sampleGrid(t)) === JSON.stringify(spec.grid));
+    // Wykres punktowy ma inny układ arkusza, więc przy przejściu z/do niego zawsze wstawiamy przykład.
+    const layoutChanged = (type === "scatter") !== (spec.type === "scatter");
+    if ((isSample || layoutChanged) && JSON.stringify(sampleGrid(type)) !== JSON.stringify(spec.grid)) {
       next.grid = sampleGrid(type);
       next.options = { ...next.options, diffArrow: null, cagr: null };
     }
-    if (type === "column-100" && spec.type !== "column-100" && !spec.options.format.suffix) next.options = { ...spec.options, format: { ...spec.options.format, suffix: "%" } };
-    if (spec.type === "column-100" && type !== "column-100" && spec.options.format.suffix === "%") next.options = { ...spec.options, format: { ...spec.options.format, suffix: "" } };
+    if (type === "column-100" && spec.type !== "column-100" && !spec.options.format.suffix) next.options = { ...next.options, format: { ...next.options.format, suffix: "%" } };
+    if (spec.type === "column-100" && type !== "column-100" && spec.options.format.suffix === "%") next.options = { ...next.options, format: { ...next.options.format, suffix: "" } };
     change(next);
   };
 
@@ -148,7 +152,7 @@ export function App() {
       </Section>
 
       <Section title="Etykiety i adnotacje">
-        <OptionsPanel type={spec.type} options={spec.options} categories={categories} onChange={(options) => change({ ...spec, options })} />
+        <OptionsPanel type={spec.type} options={spec.options} categories={categories} groups={scatterGroups} colors={getPaletteColors(spec.options.paletteId, spec.options.customColors)} onChange={(options) => change({ ...spec, options })} />
       </Section>
 
       <footer>

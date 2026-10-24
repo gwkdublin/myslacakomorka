@@ -1,3 +1,4 @@
+import { markerBox, markerPolygon } from "./markers";
 import type { Prim, Size } from "./types";
 
 function esc(s: string): string {
@@ -44,9 +45,18 @@ export function primsToSvg(prims: Prim[], size: Size, fontFamily = "Segoe UI, Ca
           `<line x1="${n(p.x1)}" y1="${n(p.y1)}" x2="${n(p.x2)}" y2="${n(p.y2)}" stroke="${p.color}" stroke-width="${p.width}"${p.dash ? ' stroke-dasharray="3 2"' : ""} stroke-linecap="round"/>`,
         );
         break;
-      case "marker":
-        parts.push(`<circle cx="${n(p.cx)}" cy="${n(p.cy)}" r="${n(p.r)}" fill="${p.fill}" stroke="#FFFFFF" stroke-width="1"/>`);
+      case "marker": {
+        const paint = p.hollow ? `fill="none" stroke="${p.fill}" stroke-width="1.5"` : `fill="${p.fill}" stroke="#FFFFFF" stroke-width="0.75"`;
+        const shape = p.shape ?? "circle";
+        if (shape === "circle") {
+          parts.push(`<circle cx="${n(p.cx)}" cy="${n(p.cy)}" r="${n(p.r)}" ${paint}/>`);
+        } else {
+          const box = markerBox(shape, p.r);
+          const pts = markerPolygon(shape).map(([u, v]) => `${n(p.cx - box.w / 2 + u * box.w)},${n(p.cy - box.h / 2 + v * box.h)}`);
+          parts.push(`<polygon points="${pts.join(" ")}" ${paint} stroke-linejoin="round"/>`);
+        }
         break;
+      }
       case "triangle": {
         const pts =
           p.direction === "down"

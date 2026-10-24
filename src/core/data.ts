@@ -1,5 +1,37 @@
 import type { ChartData, ChartOptions, ChartSpec, ChartType, NumberFormat } from "./types";
 
+export interface ScatterPoint {
+  label: string;
+  x: number;
+  y: number;
+  size: number | null;
+  group: number;
+}
+
+export interface ScatterData {
+  headers: { label: string; x: string; y: string; size: string; group: string };
+  points: ScatterPoint[];
+  groups: string[];
+}
+
+/** Arkusz wykresu punktowego: kolumny Etykieta, X, Y, Wielkość, Grupa; wiersze bez liczbowego X lub Y są pomijane. */
+export function gridToScatter(grid: string[][]): ScatterData {
+  const h = grid[0] ?? [];
+  const headers = { label: h[0] ?? "", x: h[1] ?? "", y: h[2] ?? "", size: h[3] ?? "", group: h[4] ?? "" };
+  const groups: string[] = [];
+  const points: ScatterPoint[] = [];
+  for (const row of grid.slice(1)) {
+    const x = parseNumber(row[1] ?? "");
+    const y = parseNumber(row[2] ?? "");
+    if (x === null || y === null) continue;
+    const g = (row[4] ?? "").trim();
+    let gi = groups.indexOf(g);
+    if (gi < 0) gi = groups.push(g) - 1;
+    points.push({ label: (row[0] ?? "").trim(), x, y, size: parseNumber(row[3] ?? ""), group: gi });
+  }
+  return { headers, points, groups };
+}
+
 /** Zamienia tekst komórki na liczbę. Akceptuje przecinek i kropkę dziesiętną, spacje, %, nawiasy księgowe. */
 export function parseNumber(raw: string): number | null {
   let s = raw.trim().replace(/[\s  ]/g, "");
@@ -85,6 +117,7 @@ export function defaultOptions(): ChartOptions {
     format: { decimals: 0, suffix: "", decimalSeparator: ",", thousandsSeparator: " " },
     diffArrow: null,
     cagr: null,
+    scatter: { sizeByValue: true, markerSize: 5, maxBubbleSize: 22, groupStyles: [] },
   };
 }
 
@@ -94,6 +127,17 @@ export function sampleGrid(type: ChartType): string[][] {
       return [
         ["", "Przychody 2025", "Cena", "Wolumen", "Koszty", "Przychody 2026"],
         ["Zmiana", "120", "18", "25", "-14", "e"],
+      ];
+    case "scatter":
+      return [
+        ["Firma", "Udział w rynku", "Wzrost r/r", "Przychody", "Segment"],
+        ["Alfa", "12", "8", "450", "Premium"],
+        ["Beta", "25", "3", "900", "Masowy"],
+        ["Gamma", "7", "15", "210", "Premium"],
+        ["Delta", "18", "-2", "600", "Masowy"],
+        ["Epsilon", "4", "22", "90", "Nisza"],
+        ["Zeta", "15", "6", "380", "Nisza"],
+        ["Eta", "21", "11", "520", "Premium"],
       ];
     case "pie":
     case "doughnut":
@@ -133,7 +177,12 @@ export function normalizeSpec(raw: unknown): ChartSpec | null {
     version: 1,
     type: r.type as ChartType,
     grid: r.grid.map((row) => (Array.isArray(row) ? row.map((c) => String(c ?? "")) : [])),
-    options: { ...defaults, ...(r.options ?? {}), format: { ...defaults.format, ...(r.options?.format ?? {}) } },
+    options: {
+      ...defaults,
+      ...(r.options ?? {}),
+      format: { ...defaults.format, ...(r.options?.format ?? {}) },
+      scatter: { ...defaults.scatter, ...(r.options?.scatter ?? {}) },
+    },
     excelLink: r.excelLink ?? null,
   };
 }

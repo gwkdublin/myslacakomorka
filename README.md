@@ -4,9 +4,10 @@ Dodatek Office (Office.js, TypeScript, React) do szybkiego tworzenia wykresów b
 
 ![Podgląd wykresu](docs/podglad-wykresu.png)
 
-## Co potrafi (wersja 0.1)
+## Co potrafi (wersja 0.2)
 
-- **9 typów wykresów:** kolumnowy grupowany, skumulowany i 100%, słupkowy grupowany i skumulowany, liniowy, kołowy, pierścieniowy, kaskadowy (waterfall, z automatycznymi sumami „e”).
+- **10 typów wykresów:** kolumnowy grupowany, skumulowany i 100%, słupkowy grupowany i skumulowany, liniowy, kołowy, pierścieniowy, kaskadowy (waterfall, z automatycznymi sumami „e”) oraz punktowy / bąbelkowy.
+- **Wykres punktowy (scatter):** arkusz z kolumnami etykieta, X, Y, wielkość, grupa; wielkość kropek proporcjonalna do wybranej cechy (bąbelki) albo stała; dla każdej grupy osobny kształt (okrąg, trójkąt, kwadrat, krzyżyk, romb, sześciokąt) w wersji pełnej lub pustej; tytuły osi z nagłówków, etykiety punktów, opcjonalna siatka.
 - **Arkusz danych w panelu bocznym:** układ jak w think-cell (kategorie w pierwszym wierszu, serie w pierwszej kolumnie), wklejanie zakresów prosto z Excela (Ctrl+V), dodawanie i usuwanie serii oraz kategorii, transpozycja.
 - **Excel:** import zakresu z pliku `.xlsx` (wybór arkusza i zakresu, np. `B3:E5`), zapamiętane łącze i przycisk „Odśwież z Excela”.
 - **Palety kolorów:** 8 wbudowanych (m.in. biznesowa, stonowana, kontrastowa, przyjazna daltonistom) oraz własna paleta z edytorem; ostatnio użyta paleta staje się domyślną.
