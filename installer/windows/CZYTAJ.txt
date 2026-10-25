@@ -1,0 +1,11 @@
+Dodatek Wykresy dla PowerPointa (Windows)
+
+1. Zamknij PowerPointa.
+2. Kliknij dwukrotnie plik zainstaluj.cmd.
+   Jeśli Windows pokaże okno "System Windows ochronił komputer", kliknij "Więcej informacji", a potem "Uruchom mimo to".
+3. Uruchom PowerPointa. Przycisk "Wykresy" jest na karcie Narzędzia główne, po prawej stronie wstążki.
+
+Dodatek ładuje się z https://gwkdublin.github.io/myslacakomorka/, więc nowe wersje pojawiają się same.
+Do otwarcia panelu potrzebne jest połączenie z internetem; gotowe wykresy działają bez niego.
+
+Aby usunąć dodatek: kliknij dwukrotnie odinstaluj.cmd.

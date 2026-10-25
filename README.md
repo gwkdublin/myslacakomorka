@@ -52,7 +52,8 @@ Panel dodatku to strona internetowa, więc musi być opublikowana pod adresem HT
 **Instalacja manifestu w PowerPoincie (raz):**
 
 - *Microsoft 365 (konto służbowe lub szkolne):* Narzędzia główne → Dodatki → Więcej dodatków → Moje dodatki → **Przekaż mój dodatek** → wskaż `manifest.xml`.
-- *Windows, gdy tej opcji nie ma:* udostępnij folder z manifestem (np. `C:\Dodatki`), dodaj jego adres sieciowy (`\\NAZWA-KOMPUTERA\Dodatki`) w Plik → Opcje → Centrum zaufania → Ustawienia → Wykazy zaufanych dodatków, zaznacz „Pokaż w menu”, uruchom PowerPointa ponownie i wybierz Moje dodatki → Folder udostępniony → Wykresy.
+- *Windows, najprościej:* pobierz `wykresy-instalator-windows.zip` (folder `installer/windows` + manifest), rozpakuj, zamknij PowerPointa i uruchom `zainstaluj.cmd`. Instalator rejestruje manifest dla bieżącego użytkownika (bez uprawnień administratora); `odinstaluj.cmd` go usuwa.
+- *Windows, przez folder udostępniony:* udostępnij folder z manifestem (np. `C:\Dodatki`), dodaj jego adres sieciowy (`\\NAZWA-KOMPUTERA\Dodatki`) w Plik → Opcje → Centrum zaufania → Ustawienia → Wykazy zaufanych dodatków, zaznacz „Pokaż w menu”, uruchom PowerPointa ponownie i wybierz Moje dodatki → Folder udostępniony → Wykresy.
 - *Cała firma:* administrator Microsoft 365 wdraża manifest w *Centrum administracyjnym → Ustawienia → Zintegrowane aplikacje*; przycisk pojawia się wtedy wszystkim automatycznie.
 
 ## Wymagania i ograniczenia
