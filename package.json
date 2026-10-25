@@ -13,7 +13,8 @@
     "start": "office-addin-debugging start manifest.xml desktop --app powerpoint",
     "stop": "office-addin-debugging stop manifest.xml",
     "validate": "office-addin-manifest validate manifest.xml",
-    "dev-server": "vite"
+    "dev-server": "vite",
+    "manifest": "node scripts/make-manifest.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",

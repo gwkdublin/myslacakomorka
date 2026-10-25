@@ -40,12 +40,20 @@ Sam panel można też otworzyć w zwykłej przeglądarce pod `https://localhost:
 
 Przykładowy plik do importu: `tests/fixtures/sprzedaz.xlsx` (arkusz „Sprzedaż”, zakres `B3:E5`).
 
-## Wdrożenie dla zespołu
+## Instalacja na stałe (bez PowerShell)
 
-1. `npm run build` – pliki trafiają do `dist/`.
-2. Opublikuj `dist/` na dowolnym hostingu HTTPS (np. Azure Static Web Apps, GitHub Pages).
-3. W `manifest.xml` zamień `https://localhost:3000` na adres hostingu.
-4. Administrator Microsoft 365 wdraża manifest w *Centrum administracyjnym → Ustawienia → Zintegrowane aplikacje*.
+Panel dodatku to strona internetowa, więc musi być opublikowana pod adresem HTTPS. Potem PowerPoint ładuje dodatek sam przy każdym uruchomieniu, a Node.js nie jest potrzebny.
+
+**Publikacja – wybierz jedno:**
+
+- **GitHub Pages (automatycznie):** w repozytorium jest workflow `.github/workflows/pages.yml`. Po włączeniu *Settings → Pages → Source: GitHub Actions* każda zmiana w gałęzi `main` buduje, testuje i publikuje dodatek. Manifest jest pod `https://<użytkownik>.github.io/<repozytorium>/manifest.xml`.
+- **Dowolny hosting statyczny (np. Netlify Drop):** `npm run build`, wgraj zawartość `dist/`, a potem `npm run manifest -- https://adres-hostingu` utworzy `dist/manifest.xml` z właściwymi adresami.
+
+**Instalacja manifestu w PowerPoincie (raz):**
+
+- *Microsoft 365 (konto służbowe lub szkolne):* Narzędzia główne → Dodatki → Więcej dodatków → Moje dodatki → **Przekaż mój dodatek** → wskaż `manifest.xml`.
+- *Windows, gdy tej opcji nie ma:* udostępnij folder z manifestem (np. `C:\Dodatki`), dodaj jego adres sieciowy (`\\NAZWA-KOMPUTERA\Dodatki`) w Plik → Opcje → Centrum zaufania → Ustawienia → Wykazy zaufanych dodatków, zaznacz „Pokaż w menu”, uruchom PowerPointa ponownie i wybierz Moje dodatki → Folder udostępniony → Wykresy.
+- *Cała firma:* administrator Microsoft 365 wdraża manifest w *Centrum administracyjnym → Ustawienia → Zintegrowane aplikacje*; przycisk pojawia się wtedy wszystkim automatycznie.
 
 ## Wymagania i ograniczenia
 
